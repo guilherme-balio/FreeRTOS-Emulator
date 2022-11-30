@@ -53,130 +53,113 @@ void vSwapBuffers(void *pvParameters)
     }
 }
 
-int main(int argc, char *argv[])
-{
-    char *bin_folder_path = tumUtilGetBinFolderPath(argv[0]);
+/* Kernel includes. */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "semphr.h"
 
-    prints("Initializing: ");
+#define NUM_OF_PHILOSOPHERS (5)
+#define MAX_NUMBER_ALLOWED (NUM_OF_PHILOSOPHERS - 1)
 
-    //  Note PRINT_ERROR is not thread safe and is only used before the
-    //  scheduler is started. There are thread safe print functions in
-    //  TUM_Print.h, `prints` and `fprints` that work exactly the same as
-    //  `printf` and `fprintf`. So you can read the documentation on these
-    //  functions to understand the functionality.
+SemaphoreHandle_t forks[NUM_OF_PHILOSOPHERS];
+SemaphoreHandle_t entry_sem;
+TaskHandle_t philosophers[NUM_OF_PHILOSOPHERS];
+TickType_t start;
+TickType_t stop;
 
-    if (tumDrawInit(bin_folder_path)) {
-        PRINT_ERROR("Failed to intialize drawing");
-        goto err_init_drawing;
-    }
-    else {
-        prints("drawing");
-    }
+#define left(i) (i)
+#define right(i) ((i + 1) % NUM_OF_PHILOSOPHERS)
 
-    if (tumEventInit()) {
-        PRINT_ERROR("Failed to initialize events");
-        goto err_init_events;
-    }
-    else {
-        prints(", events");
-    }
+void take_fork(int i) {
+	xSemaphoreTake(forks[left(i)], portMAX_DELAY);
+	xSemaphoreTake(forks[right(i)], portMAX_DELAY);
+	printf("Philosopher %d got the fork %d and %d\n", i, left(i), right(i));
 
-    if (tumSoundInit(bin_folder_path)) {
-        PRINT_ERROR("Failed to initialize audio");
-        goto err_init_audio;
-    }
-    else {
-        prints(", and audio\n");
-    }
-
-    if (safePrintInit()) {
-        PRINT_ERROR("Failed to init safe print");
-        goto err_init_safe_print;
-    }
-
-
-    atexit(aIODeinit);
-
-    //Load a second font for fun
-    tumFontLoadFont(FPS_FONT, DEFAULT_FONT_SIZE);
-
-    if (buttonsInit()) {
-        PRINT_ERROR("Failed to init buttons");
-        goto err_buttons_lock;
-    }
-
-    DrawSignal = xSemaphoreCreateBinary(); // Screen buffer locking
-    if (!DrawSignal) {
-        PRINT_ERROR("Failed to create draw signal");
-        goto err_draw_signal;
-    }
-
-    // Message sending
-    StateQueue = xQueueCreate(STATE_QUEUE_LENGTH, sizeof(unsigned char));
-    if (!StateQueue) {
-        PRINT_ERROR("Could not open state queue");
-        goto err_state_queue;
-    }
-
-    if (xTaskCreate(basicSequentialStateMachine, "StateMachine",
-                    mainGENERIC_STACK_SIZE * 2, NULL,
-                    configMAX_PRIORITIES - 1, &StateMachine) != pdPASS) {
-        PRINT_TASK_ERROR("StateMachine");
-        goto err_statemachine;
-    }
-    if (xTaskCreate(vSwapBuffers, "BufferSwapTask",
-                    mainGENERIC_STACK_SIZE * 2, NULL, configMAX_PRIORITIES,
-                    &BufferSwap) != pdPASS) {
-        PRINT_TASK_ERROR("BufferSwapTask");
-        goto err_bufferswap;
-    }
-
-    /** Demo Tasks */
-    if (createDemoTasks()) {
-        goto err_demotasks;
-    }
-
-    /** SOCKETS */
-    if (createSocketTasks()) {
-        goto err_sockettasks;
-    }
-
-    /** POSIX MESSAGE QUEUES */
-    if (createMessageQueueTasks()) {
-        goto err_messagequeuetasks;
-    }
-
-    tumFUtilPrintTaskStateList();
-
-    vTaskStartScheduler();
-
-    return EXIT_SUCCESS;
-
-err_messagequeuetasks:
-    deleteSocketTasks();
-err_sockettasks:
-    deleteDemoTasks();
-err_demotasks:
-    vTaskDelete(BufferSwap);
-err_bufferswap:
-    vTaskDelete(StateMachine);
-err_statemachine:
-    vQueueDelete(StateQueue);
-err_state_queue:
-    vSemaphoreDelete(DrawSignal);
-err_draw_signal:
-    buttonsExit();
-err_buttons_lock:
-    tumSoundExit();
-err_init_audio:
-    tumEventExit();
-err_init_events:
-    tumDrawExit();
-err_init_drawing:
-    safePrintExit();
-err_init_safe_print:
-    return EXIT_FAILURE;
 }
+
+void put_fork(int i) {
+	xSemaphoreGive(forks[left(i)]);
+	xSemaphoreGive(forks[right(i)]);
+	printf("Philosopher %d Gave up the fork %d and %d\n", i, left(i), right(i));
+
+}
+
+void philosophers_task(void *param) {
+
+	int i = *(int *)param;
+
+    printf("Iniciou a task %d \n", i);
+
+    // Inicia contador
+    start = xTaskGetTickCount();
+
+	while (1) {
+
+		xSemaphoreTake(entry_sem, portMAX_DELAY);
+
+		take_fork(i);
+
+		printf("Philosopher %d is eating\n", i);
+
+		// Add a Delay to eat. Not Required but be practical.
+    		vTaskDelay(100);
+
+		put_fork(i);
+
+		xSemaphoreGive(entry_sem);
+
+        // subtrai do começo e mostra média
+        stop = xTaskGetTickCount() - start;
+        // media;
+        if (stop != 0 ){
+            printf("Tarefa %d - total de fome: %d ms\n",i , stop);
+        }
+        
+        // zera contador
+        start = xTaskGetTickCount();
+    
+        // This is not required. But practical
+		vTaskDelay(10);
+
+	}
+
+}
+
+int main(void) {
+
+	int i;
+	int param[NUM_OF_PHILOSOPHERS];
+
+	// Create Five Semaphores for the five shared resources. 
+	// Which is the fork in this case.
+
+	for (i = 0; i < NUM_OF_PHILOSOPHERS; i++) {
+		forks[i] = xSemaphoreCreateMutex();
+	}
+
+	// This is the critical piece to avoid deadlock.
+	// If one less philosopher is allowed to act then there will no deadlock.
+	// As one philosopher will always get two forks and so it will go on.
+
+	entry_sem = xSemaphoreCreateCounting(MAX_NUMBER_ALLOWED, MAX_NUMBER_ALLOWED);
+
+	for (i = 0; i < NUM_OF_PHILOSOPHERS; i++) {
+		// Ofcourse, you can just pass i as every thread needs it's own
+		// address to store the parameter.
+		param[i] = i;
+		xTaskCreate(philosophers_task, "task", 30, &(param[i]), 2, NULL);
+	}
+
+	vTaskStartScheduler();
+    return 0;
+}
+
+//int main(int argc, char *argv[])
+//{
+    
+
+//}
 
 // cppcheck-suppress unusedFunction
 __attribute__((unused)) void vMainQueueSendPassed(void)
