@@ -85,43 +85,51 @@ void put_fork(int i) {
 
 }
 
+int gen_random(int min, int max){
+    return min + rand() / (RAND_MAX / (max - min + 1) + 1);
+}
+
 void philosophers_task(void *param) {
 
 	int i = *(int *)param;
-
     printf("Iniciou a task %d \n", i);
-
-    // Inicia contador
-    start = xTaskGetTickCount();
+    int fome = gen_random(0, 10);
+    printf("Fome inicial: %d\n", fome);
 
 	while (1) {
 
-		xSemaphoreTake(entry_sem, portMAX_DELAY);
+        // pensar por 1s enquanto estiver com fome
+        do {
+        vTaskDelay(100);
+        fome++;
+        printf("task %d, fome %d\n",i,fome);
+        }while(fome < 10);
+
+        // Inicia contador
+        start = xTaskGetTickCount();
 
 		take_fork(i);
 
 		printf("Philosopher %d is eating\n", i);
 
-		// Add a Delay to eat. Not Required but be practical.
-    		vTaskDelay(100);
+		// Tempo comendo
+        vTaskDelay(100);
 
-		put_fork(i);
-
-		xSemaphoreGive(entry_sem);
+        // zera fome
+        fome = 0;
 
         // subtrai do começo e mostra média
         stop = xTaskGetTickCount() - start;
-        // media;
-        if (stop != 0 ){
-            printf("Tarefa %d - total de fome: %d ms\n",i , stop);
-        }
-        
-        // zera contador
-        start = xTaskGetTickCount();
-    
-        // This is not required. But practical
-		vTaskDelay(10);
 
+        // media;
+
+        printf("Tarefa %d - total de fome: %d ms\n",i , stop);
+                
+        // zera contador de tempo
+        start = xTaskGetTickCount();
+
+        put_fork(i);
+    
 	}
 
 }
@@ -130,6 +138,8 @@ int main(void) {
 
 	int i;
 	int param[NUM_OF_PHILOSOPHERS];
+    srand(time(NULL));
+
 
 	// Create Five Semaphores for the five shared resources. 
 	// Which is the fork in this case.
