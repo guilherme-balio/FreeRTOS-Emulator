@@ -57,7 +57,6 @@ void vSwapBuffers(void *pvParameters)
 #include "semphr.h"
 
 #define NUM_OF_PHILOSOPHERS (5)
-#define MAX_NUMBER_ALLOWED (NUM_OF_PHILOSOPHERS - 1)
 
 SemaphoreHandle_t forks[NUM_OF_PHILOSOPHERS];
 SemaphoreHandle_t entry_sem;
@@ -109,6 +108,25 @@ void philosophers_task(void *param) {
 	}
 }
 
+void task_measure(void *param){
+
+    TickType_t xLastWakeTime;
+    const TickType_t xFrequency = 200000;
+    xLastWakeTime = xTaskGetTickCount ();
+
+    for(;;){
+
+        printf("Comeram no total: %d vezes\n", comeu);
+        // zerando contador
+        comeu = 0;
+
+        // alterando o número de filósofos
+
+        // Wait for the next cycle.
+        vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    }
+}
+
 int main(void) {
 
 	int i;
@@ -127,13 +145,13 @@ int main(void) {
 	// If one less philosopher is allowed to act then there will no deadlock.
 	// As one philosopher will always get two forks and so it will go on.
 
-	entry_sem = xSemaphoreCreateCounting(MAX_NUMBER_ALLOWED, MAX_NUMBER_ALLOWED);
+    xTaskCreate(task_measure, "medição", 30, NULL, 1, NULL);
 
 	for (i = 0; i < NUM_OF_PHILOSOPHERS; i++) {
 		// Ofcourse, you can just pass i as every thread needs it's own
 		// address to store the parameter.
 		param[i] = i;
-		xTaskCreate(philosophers_task, "task", 30, &(param[i]), 2, NULL);
+		xTaskCreate(philosophers_task, "filósofos", 30, &(param[i]), 2, NULL);
 	}
 	vTaskStartScheduler();
     return 0;
