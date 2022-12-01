@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "main.h"
 #include "queue.h"
@@ -31,10 +32,6 @@
 
 const unsigned char next_state_signal = NEXT_TASK;
 const unsigned char prev_state_signal = PREV_TASK;
-
-static TaskHandle_t StateMachine = NULL;
-static TaskHandle_t BufferSwap = NULL;
-
 
 SemaphoreHandle_t DrawSignal = NULL;
 
@@ -78,7 +75,9 @@ void take_fork(int i) {
 
 }
 
-void put_fork(int i) {
+void put_fork(int i, int fome) {
+    printf("Philosopher %d is eating\n", i);
+    vTaskDelay(1000);
 	xSemaphoreGive(forks[left(i)]);
 	xSemaphoreGive(forks[right(i)]);
 	printf("Philosopher %d Gave up the fork %d and %d\n", i, left(i), right(i));
@@ -97,41 +96,26 @@ void philosophers_task(void *param) {
     printf("Fome inicial: %d\n", fome);
 
 	while (1) {
-
         // pensar por 1s enquanto estiver com fome
-        do {
+        while(fome < 10){
         vTaskDelay(100);
-        fome++;
+        fome ++;
         printf("task %d, fome %d\n",i,fome);
-        }while(fome < 10);
+        };
 
         // Inicia contador
         start = xTaskGetTickCount();
 
+        // pega garfo, come e depois zera a fome
 		take_fork(i);
-
-		printf("Philosopher %d is eating\n", i);
-
-		// Tempo comendo
-        vTaskDelay(100);
-
-        // zera fome
         fome = 0;
 
-        // subtrai do começo e mostra média
         stop = xTaskGetTickCount() - start;
-
-        // media;
-
         printf("Tarefa %d - total de fome: %d ms\n",i , stop);
-                
-        // zera contador de tempo
-        start = xTaskGetTickCount();
 
-        put_fork(i);
-    
+        // coloca garfo na mesa
+        put_fork(i, fome);
 	}
-
 }
 
 int main(void) {
@@ -160,7 +144,6 @@ int main(void) {
 		param[i] = i;
 		xTaskCreate(philosophers_task, "task", 30, &(param[i]), 2, NULL);
 	}
-
 	vTaskStartScheduler();
     return 0;
 }
