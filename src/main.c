@@ -75,7 +75,7 @@ void take_fork(int i) {
 
 }
 
-void put_fork(int i, int fome) {
+void put_fork(int i) {
     printf("Philosopher %d is eating\n", i);
     vTaskDelay(1000);
 	xSemaphoreGive(forks[left(i)]);
@@ -92,15 +92,15 @@ void philosophers_task(void *param) {
 
 	int i = *(int *)param;
     printf("Iniciou a task %d \n", i);
-    int fome = gen_random(0, 10);
-    printf("Fome inicial: %d\n", fome);
+    int pensar = gen_random(0, 10);
+    printf("Contador de pensar inicial: %d\n", pensar);
 
 	while (1) {
         // pensar por 1s enquanto estiver com fome
-        while(fome < 10){
+        while(pensar < 10){
         vTaskDelay(100);
-        fome ++;
-        printf("task %d, fome %d\n",i,fome);
+        pensar ++;
+        printf("task %d, pensar %d\n",i,pensar);
         };
 
         // Inicia contador
@@ -108,13 +108,13 @@ void philosophers_task(void *param) {
 
         // pega garfo, come e depois zera a fome
 		take_fork(i);
-        fome = 0;
+        pensar = 0;
 
         stop = xTaskGetTickCount() - start;
         printf("Tarefa %d - total de fome: %d ms\n",i , stop);
 
         // coloca garfo na mesa
-        put_fork(i, fome);
+        put_fork(i);
 	}
 }
 
