@@ -62,8 +62,7 @@ void vSwapBuffers(void *pvParameters)
 SemaphoreHandle_t forks[NUM_OF_PHILOSOPHERS];
 SemaphoreHandle_t entry_sem;
 TaskHandle_t philosophers[NUM_OF_PHILOSOPHERS];
-TickType_t start;
-TickType_t stop;
+int comeu = 0;
 
 #define left(i) (i)
 #define right(i) ((i + 1) % NUM_OF_PHILOSOPHERS)
@@ -77,11 +76,11 @@ void take_fork(int i) {
 
 void put_fork(int i) {
     printf("Philosopher %d is eating\n", i);
-    vTaskDelay(1000);
+    vTaskDelay(10000);
 	xSemaphoreGive(forks[left(i)]);
 	xSemaphoreGive(forks[right(i)]);
+    comeu++;
 	printf("Philosopher %d Gave up the fork %d and %d\n", i, left(i), right(i));
-
 }
 
 int gen_random(int min, int max){
@@ -92,26 +91,18 @@ void philosophers_task(void *param) {
 
 	int i = *(int *)param;
     printf("Iniciou a task %d \n", i);
-    int pensar = gen_random(0, 10);
-    printf("Contador de pensar inicial: %d\n", pensar);
+    int pensar;
 
 	while (1) {
-        // pensar por 1s enquanto estiver com fome
-        while(pensar < 10){
-        vTaskDelay(100);
-        pensar ++;
-        printf("task %d, pensar %d\n",i,pensar);
-        };
+        
+        printf("Vezes que comeram: %d\n", comeu);
+        pensar = gen_random(0, 100);
+        printf("Contador de pensar: %d\n", pensar);
 
-        // Inicia contador
-        start = xTaskGetTickCount();
+        vTaskDelay(pensar);
 
-        // pega garfo, come e depois zera a fome
+        // pega garfo
 		take_fork(i);
-        pensar = 0;
-
-        stop = xTaskGetTickCount() - start;
-        printf("Tarefa %d - total de fome: %d ms\n",i , stop);
 
         // coloca garfo na mesa
         put_fork(i);
