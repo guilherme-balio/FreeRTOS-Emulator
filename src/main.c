@@ -59,14 +59,14 @@ void vSwapBuffers(void *pvParameters)
 #define NUM_OF_PHILOSOPHERS (5)
 
 SemaphoreHandle_t forks[NUM_OF_PHILOSOPHERS];
-SemaphoreHandle_t entry_sem;
-TaskHandle_t philosophers[NUM_OF_PHILOSOPHERS];
+SemaphoreHandle_t arbitro;
 int comeu = 0;
 
 #define left(i) (i)
 #define right(i) ((i + 1) % NUM_OF_PHILOSOPHERS)
 
 void take_fork(int i) {
+    //xSemaphoreTake(arbitro,portMAX_DELAY);
 	xSemaphoreTake(forks[left(i)], portMAX_DELAY);
 	xSemaphoreTake(forks[right(i)], portMAX_DELAY);
 	//printf("Philosopher %d got the fork %d and %d\n", i, left(i), right(i));
@@ -76,6 +76,7 @@ void take_fork(int i) {
 void put_fork(int i) {
     //printf("Philosopher %d is eating\n", i);
     vTaskDelay(10000);
+    //xSemaphoreGive(arbitro);
 	xSemaphoreGive(forks[left(i)]);
 	xSemaphoreGive(forks[right(i)]);
     comeu++;
@@ -131,9 +132,7 @@ int main(void) {
 	int param[NUM_OF_PHILOSOPHERS];
     srand(time(NULL));
 
-
-	// Create Five Semaphores for the five shared resources. 
-	// Which is the fork in this case.
+	//arbitro = xSemaphoreCreateMutex();
 
 	for (i = 0; i < NUM_OF_PHILOSOPHERS; i++) {
 		forks[i] = xSemaphoreCreateMutex();
