@@ -69,17 +69,17 @@ int comeu = 0;
 void take_fork(int i) {
 	xSemaphoreTake(forks[left(i)], portMAX_DELAY);
 	xSemaphoreTake(forks[right(i)], portMAX_DELAY);
-	printf("Philosopher %d got the fork %d and %d\n", i, left(i), right(i));
+	//printf("Philosopher %d got the fork %d and %d\n", i, left(i), right(i));
 
 }
 
 void put_fork(int i) {
-    printf("Philosopher %d is eating\n", i);
+    //printf("Philosopher %d is eating\n", i);
     vTaskDelay(10000);
 	xSemaphoreGive(forks[left(i)]);
 	xSemaphoreGive(forks[right(i)]);
     comeu++;
-	printf("Philosopher %d Gave up the fork %d and %d\n", i, left(i), right(i));
+	//printf("Philosopher %d Gave up the fork %d and %d\n", i, left(i), right(i));
 }
 
 int gen_random(int min, int max){
@@ -94,9 +94,8 @@ void philosophers_task(void *param) {
 
 	while (1) {
         
-        printf("Vezes que comeram: %d\n", comeu);
         pensar = gen_random(0, 100);
-        printf("Contador de pensar: %d\n", pensar);
+        //printf("Contador de pensar: %d\n", pensar);
 
         vTaskDelay(pensar);
 
@@ -111,15 +110,14 @@ void philosophers_task(void *param) {
 void task_measure(void *param){
 
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 200000;
+    const TickType_t xFrequency = 20000;
     xLastWakeTime = xTaskGetTickCount ();
+    printf("Tempo (s), Trabalho completo\n");
 
     for(;;){
 
-        printf("Comeram no total: %d vezes\n", comeu);
-        // zerando contador
-        comeu = 0;
-
+        printf("%d,", xLastWakeTime/10000);
+        printf("%d \n", comeu);
         // alterando o número de filósofos
 
         // Wait for the next cycle.
