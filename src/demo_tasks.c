@@ -17,6 +17,7 @@
 TaskHandle_t DemoTask1 = NULL;
 TaskHandle_t DemoTask2 = NULL;
 TaskHandle_t DemoSendTask = NULL;
+SemaphoreHandle_t DrawSignal = NULL;
 
 void vDemoTask1(void *pvParameters)
 {
