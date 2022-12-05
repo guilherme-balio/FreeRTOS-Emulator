@@ -15,7 +15,8 @@
 
 SemaphoreHandle_t forks[NUM_OF_PHILOSOPHERS];
 SemaphoreHandle_t arbitro;
-int comeu = 0;
+FILE *f;
+int trabalho = 0;
 
 #define left(i) (i)
 #define right(i) ((i + 1) % NUM_OF_PHILOSOPHERS)
@@ -24,18 +25,18 @@ void take_fork(int i) {
     //xSemaphoreTake(arbitro,portMAX_DELAY);
 	xSemaphoreTake(forks[left(i)], portMAX_DELAY);
 	xSemaphoreTake(forks[right(i)], portMAX_DELAY);
-	//printf("Philosopher %d got the fork %d and %d\n", i, left(i), right(i));
+    printf("Filósofo %d pegou garfo %d e %d\n", i, left(i), right(i));
 
 }
 
 void put_fork(int i) {
-    //printf("Philosopher %d is eating\n", i);
+    printf("Filósofo %d está comendo.\n", i);
     vTaskDelay(10000);
     //xSemaphoreGive(arbitro);
 	xSemaphoreGive(forks[left(i)]);
 	xSemaphoreGive(forks[right(i)]);
-    comeu++;
-	//printf("Philosopher %d Gave up the fork %d and %d\n", i, left(i), right(i));
+    trabalho++;
+	printf("Filósofo %d retornou o garfo %d e %d\n", i, left(i), right(i));
 }
 
 int gen_random(int min, int max){
@@ -66,12 +67,18 @@ void task_measure(void *param){
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = 20000;
     xLastWakeTime = xTaskGetTickCount ();
-    printf("Tempo (s), Trabalho completo\n");
+    fprintf(f, "Tempo (s), Trabalho completo\n");
+    fclose(f);
 
     for(;;){
 
-        printf("%d,", xLastWakeTime/10000);
-        printf("%d \n", comeu);
+        fopen("file.csv", "a");
+        
+        // contador de tempo fazendo a conversão para segundos
+        fprintf(f,"%d,", xLastWakeTime/10000);
+        // contador de trabalho realizado
+        fprintf(f,"%d \n", trabalho);
+        fclose(f);
 
         // Esperar próximo ciclo
         vTaskDelayUntil( &xLastWakeTime, xFrequency );
@@ -85,6 +92,12 @@ int main(void) {
     srand(time(NULL));
 
 	//arbitro = xSemaphoreCreateMutex();
+
+    f = fopen("file.csv", "a");
+    if (f == NULL) {
+        printf("Error abrindo arquivo.\n");
+        exit(1);
+    }
 
 	for (i = 0; i < NUM_OF_PHILOSOPHERS; i++) {
 		forks[i] = xSemaphoreCreateMutex();
